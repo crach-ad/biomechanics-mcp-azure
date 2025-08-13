@@ -1,0 +1,87 @@
+name: Deploy to Azure Container Apps
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  AZURE_RESOURCE_GROUP: rg-bio-mcp
+  AZURE_LOCATION: eastus
+  CONTAINER_ENVIRONMENT: env-bio-mcp
+  REGISTRY_NAME: ca1987fd2629acr
+  INFERENCE_APP_NAME: app-infer-bio
+  MCP_APP_NAME: app-mcp-bio
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Azure CLI
+      uses: azure/CLI@v1
+      with:
+        azcliversion: 2.53.0
+    
+    - name: Login to Azure
+      uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+    
+    - name: Login to Azure Container Registry
+      run: |
+        az acr login --name ${{ env.REGISTRY_NAME }}
+    
+    - name: Build and push inference service
+      run: |
+        cd services/infer
+        docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/bio-infer:${{ github.sha }} .
+        docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/bio-infer:latest .
+        docker push ${{ env.REGISTRY_NAME }}.azurecr.io/bio-infer:${{ github.sha }}
+        docker push ${{ env.REGISTRY_NAME }}.azurecr.io/bio-infer:latest
+    
+    - name: Build and push MCP service
+      run: |
+        cd services/mcp
+        docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/bio-mcp:${{ github.sha }} .
+        docker build -t ${{ env.REGISTRY_NAME }}.azurecr.io/bio-mcp:latest .
+        docker push ${{ env.REGISTRY_NAME }}.azurecr.io/bio-mcp:${{ github.sha }}
+        docker push ${{ env.REGISTRY_NAME }}.azurecr.io/bio-mcp:latest
+    
+    - name: Deploy inference service to Container Apps
+      run: |
+        # Get inference service URL for MCP service environment variable
+        INFER_URL="https://app-infer-bio.livelyforest-5153f98b.eastus.azurecontainerapps.io"
+        
+        az containerapp update \
+          --name ${{ env.INFERENCE_APP_NAME }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --image ${{ env.REGISTRY_NAME }}.azurecr.io/bio-infer:${{ github.sha }} \
+          --set-env-vars PYTHONUNBUFFERED=1
+    
+    - name: Deploy MCP service to Container Apps
+      run: |
+        INFER_URL="https://app-infer-bio.livelyforest-5153f98b.eastus.azurecontainerapps.io"
+        
+        az containerapp update \
+          --name ${{ env.MCP_APP_NAME }} \
+          --resource-group ${{ env.AZURE_RESOURCE_GROUP }} \
+          --image ${{ env.REGISTRY_NAME }}.azurecr.io/bio-mcp:${{ github.sha }} \
+          --set-env-vars INFER_URL=$INFER_URL NODE_ENV=production
+    
+    - name: Test deployments
+      run: |
+        echo "Testing inference service..."
+        curl -f https://app-infer-bio.livelyforest-5153f98b.eastus.azurecontainerapps.io/health || echo "Inference health check failed"
+        
+        echo "Testing MCP service..."
+        curl -f https://app-mcp-bio.livelyforest-5153f98b.eastus.azurecontainerapps.io/mcp || echo "MCP service check failed"
+        
+        echo "Deployment completed!"
+        echo "Inference API: https://app-infer-bio.livelyforest-5153f98b.eastus.azurecontainerapps.io"
+        echo "MCP Server: https://app-mcp-bio.livelyforest-5153f98b.eastus.azurecontainerapps.io/mcp"

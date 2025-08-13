@@ -1,0 +1,17 @@
+{
+  "mcp": {
+    "servers": {
+      "biomech-mcp": {
+        "transport": "http",
+        "url": "http://localhost:3000/mcp",
+        "env": { "AUTH_MODE": "none" },
+        "description": "Local biomechanics analysis MCP server for development"
+      },
+      "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+        "description": "Filesystem access for reading/writing analysis files"
+      }
+    }
+  }
+}

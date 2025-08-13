@@ -1,0 +1,17 @@
+{
+  "mcp": {
+    "servers": {
+      "biomech-mcp-azure": {
+        "transport": "http",
+        "url": "https://app-mcp-bio.livelyforest-5153f98b.eastus.azurecontainerapps.io/mcp",
+        "env": { "AUTH_MODE": "none" },
+        "description": "Azure-deployed biomechanics analysis MCP server"
+      },
+      "filesystem": {
+        "command": "npx",
+        "args": ["-y", "@modelcontextprotocol/server-filesystem", "."],
+        "description": "Filesystem access for reading/writing analysis files"
+      }
+    }
+  }
+}
