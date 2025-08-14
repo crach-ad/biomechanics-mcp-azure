@@ -1,7 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
-import cv2
+# import cv2  # Temporarily disabled for simple deployment
 import numpy as np
 import requests
 import tempfile
@@ -47,16 +47,12 @@ async def analyze_biomechanics(req: AnalyzeRequest):
             
             video_path = tmp_file.name
         
-        # Analyze video with OpenCV (placeholder for actual pose estimation)
-        cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        frame_count = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-        duration_ms = (frame_count / fps) * 1000 if fps > 0 else 0
+        # Mock video analysis (simplified for initial deployment)
+        # TODO: Replace with actual pose estimation using OpenCV/MediaPipe
+        duration_ms = 5000.0  # Mock 5 second video
         
         # Mock analysis results (replace with actual pose estimation)
         analysis_result = _mock_biomechanics_analysis(req.phases, req.focus, duration_ms)
-        
-        cap.release()
         os.unlink(video_path)  # Clean up temp file
         
         return analysis_result
@@ -77,22 +73,13 @@ async def extract_frame(req: FrameRequest):
             
             video_path = tmp_file.name
         
-        cap = cv2.VideoCapture(video_path)
-        fps = cap.get(cv2.CAP_PROP_FPS)
-        
-        # Seek to specific timestamp
-        frame_number = int((req.ms / 1000.0) * fps)
-        cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-        
-        ret, frame = cap.read()
-        if not ret:
-            raise HTTPException(status_code=400, detail="Could not extract frame at specified timestamp")
-        
-        # Save frame temporarily and return info
+        # Mock frame extraction (simplified for initial deployment)
+        # TODO: Replace with actual OpenCV frame extraction
         frame_path = f"/tmp/frame_{req.ms}ms.jpg"
-        cv2.imwrite(frame_path, frame)
         
-        cap.release()
+        # Create a simple mock frame file
+        with open(frame_path, "w") as f:
+            f.write(f"Mock frame at {req.ms}ms")
         os.unlink(video_path)
         
         return {
